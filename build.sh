@@ -24,6 +24,7 @@ cd "$SCRIPT_DIR"
 source "$SCRIPT_DIR/../build-common/version.sh"
 source "$SCRIPT_DIR/../build-common/ftp-upload.sh"
 source "$SCRIPT_DIR/../build-common/git-commit.sh"
+source "$SCRIPT_DIR/../build-common/mac-sparkle-lib.sh"
 
 APP_ONLY=false
 COMMIT_MSG=""
@@ -74,14 +75,11 @@ create_app_bundle() {
 
     cp "$UNIVERSAL_BIN" "$MACOS/$APP_EXE"
 
-    # Sparkle.framework を埋め込み（シンボリックリンクを実体解決してコピー）
     local FRAMEWORKS="$CONTENTS/Frameworks"
     local SPARKLE_REAL
     SPARKLE_REAL="$(readlink -f Sparkle.framework)"
     mkdir -p "$FRAMEWORKS"
-    cp -R "$SPARKLE_REAL" "$FRAMEWORKS/Sparkle.framework"
-    # XPCServices を MacOS/ 直下にも配置（Sparkle 要件）
-    cp -R "$SPARKLE_REAL/Versions/B/XPCServices" "$MACOS/" 2>/dev/null || true
+    mac_sparkle_embed "$SPARKLE_REAL" "$FRAMEWORKS/Sparkle.framework"
 
     local ICON_BLOCK=""
     if [ -f "AppIcon.icns" ]; then
@@ -175,16 +173,11 @@ echo "========== 直接配布版（署名・ノータライズ）=========="
 
 echo ""
 echo "🔏 コード署名中..."
-codesign --force --deep --sign "$SIGNING_IDENTITY" \
-    --identifier "$BUNDLE_ID" \
-    --options runtime \
-    --timestamp \
-    "$DIRECT_BUNDLE"
+mac_sparkle_sign_app "$DIRECT_BUNDLE" "$SIGNING_IDENTITY" "$BUNDLE_ID"
 
 echo ""
 echo "📤 ノータライズ送信中..."
-rm -f "$BUILD_DIR/$ZIP_NAME"
-ditto -c -k --keepParent "$DIRECT_BUNDLE" "$BUILD_DIR/$ZIP_NAME"
+mac_create_dist_zip "$DIRECT_BUNDLE" "$BUILD_DIR/$ZIP_NAME"
 
 xcrun notarytool submit "$BUILD_DIR/$ZIP_NAME" \
     --keychain-profile "$KEYCHAIN_PROFILE" \
@@ -194,8 +187,12 @@ echo ""
 echo "📎 ステープル中..."
 xcrun stapler staple "$DIRECT_BUNDLE" || true
 
-rm -f "$BUILD_DIR/$ZIP_NAME"
-ditto -c -k --keepParent "$DIRECT_BUNDLE" "$BUILD_DIR/$ZIP_NAME"
+mac_create_dist_zip "$DIRECT_BUNDLE" "$BUILD_DIR/$ZIP_NAME"
+
+echo ""
+echo "🔍 配布前検査（ZIP 内容 + デスクトップ基準 + 第2検査機）..."
+chmod +x "$SCRIPT_DIR/../build-common/verify-mac-distribution-post.sh"
+"$SCRIPT_DIR/../build-common/verify-mac-distribution-post.sh" "$DIRECT_BUNDLE" "$BUILD_DIR/$ZIP_NAME"
 
 echo ""
 echo "📂 配布用ディレクトリにコピーしています..."
@@ -208,8 +205,6 @@ fi
 cp "$BUILD_DIR/$ZIP_NAME" "$DIST_DIR/$ZIP_NAME"
 echo "  ✓ $DIST_DIR/$ZIP_NAME にコピーしました"
 
-ftp_upload_file "$DIST_DIR/$ZIP_NAME" "process-monitor/$ZIP_NAME"
-
 python3 -c "
 import json, os
 path = '$DIST_DIR/manifest.json'
@@ -221,7 +216,6 @@ data['version'] = '$VERSION'
 data['mac_version'] = '$VERSION'
 with open(path, 'w') as f: json.dump(data, f)
 "
-ftp_upload_file "$DIST_DIR/manifest.json" "process-monitor/manifest.json"
 
 echo ""
 echo "📋 appcast.xml を生成中..."
@@ -231,7 +225,7 @@ SPARKLE_ACCOUNT="ed25519"
     --download-url-prefix "https://apps.tomippe.jp/process-monitor/" \
     --link "https://apps.tomippe.jp/process-monitor/" \
     "$DIST_DIR"
-ftp_upload_file "$DIST_DIR/appcast.xml" "process-monitor/appcast.xml"
+ftp_upload_dir "$DIST_DIR" "process-monitor"
 
 if ! $NO_VERUP; then
     echo ""
