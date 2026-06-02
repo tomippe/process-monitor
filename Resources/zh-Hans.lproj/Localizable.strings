@@ -17,7 +17,8 @@
 "about.open_intro" = "在 apps.tomippe.jp 打开应用介绍页";
 "button.ok" = "好";
 "menu.login_item" = "登录时打开";
-"menu.quit" = "退出";
+"menu.restart_format" = "重新启动 %@";
+"menu.quit_format" = "退出 %@";
 "menu.no_processes" = "没有进程数据";
 "menu.cpu_time" = "CPU 时间：%@";
 "menu.open_activity_monitor" = "打开活动监视器";

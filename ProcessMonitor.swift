@@ -406,7 +406,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ))
         menu.addItem(sparkleCheckForUpdatesMenuItem())
         menu.addItem(.separator())
-        menu.addItem(mi(NSLocalizedString("menu.quit", comment: ""), #selector(quit), "q"))
+        menu.addItem(TomippeRelaunch.restartMenuItem(
+            appDisplayName: "Process Monitor",
+            target: self,
+            action: #selector(restartApp)
+        ))
+        menu.addItem(TomippeRelaunch.quitMenuItem(
+            appDisplayName: "Process Monitor",
+            target: self,
+            action: #selector(quit),
+            keyEquivalent: "q"
+        ))
     }
 
     private func rankedMenuItem(for group: ProcessGroup) -> NSMenuItem {
@@ -563,6 +573,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             introURL: processMonitorIntroURL,
             checkForUpdates: { [weak self] in self?.updaterController.checkForUpdates(nil) }
         )
+    }
+
+    @objc private func restartApp() {
+        TomippeRelaunch.relaunchCurrentApp()
     }
 
     @objc private func quit() {

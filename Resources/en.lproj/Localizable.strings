@@ -17,7 +17,8 @@
 "about.open_intro" = "Open the app page on apps.tomippe.jp";
 "button.ok" = "OK";
 "menu.login_item" = "Open at Login";
-"menu.quit" = "Quit";
+"menu.restart_format" = "Restart %@";
+"menu.quit_format" = "Quit %@";
 "menu.no_processes" = "No Process Data";
 "menu.cpu_time" = "CPU Time: %@";
 "menu.open_activity_monitor" = "Open Activity Monitor";
