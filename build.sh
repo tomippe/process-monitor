@@ -46,7 +46,8 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
 MOVE_SWIFT="$SCRIPT_DIR/../build-common/MoveToApplicationsFolder.swift"
-SWIFT_SOURCES="ProcessMonitor.swift $MOVE_SWIFT"
+TOMIPPE_ABOUT="$SCRIPT_DIR/../build-common/TomippeAppAbout.swift"
+SWIFT_SOURCES="ProcessMonitor.swift $MOVE_SWIFT $TOMIPPE_ABOUT"
 for src in $SWIFT_SOURCES; do
     if [ ! -f "$src" ]; then
         echo "❌ $src がありません。"
@@ -94,6 +95,11 @@ create_app_bundle() {
         ICON_BLOCK="
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>"
+    fi
+    if [ -f "$SCRIPT_DIR/../auto-mount/Resources/AppsLogo.png" ]; then
+        cp "$SCRIPT_DIR/../auto-mount/Resources/AppsLogo.png" "$RESOURCES/"
+    elif [ -f "Resources/AppsLogo.png" ]; then
+        cp "Resources/AppsLogo.png" "$RESOURCES/"
     fi
 
     cat > "$CONTENTS/Info.plist" <<PLIST

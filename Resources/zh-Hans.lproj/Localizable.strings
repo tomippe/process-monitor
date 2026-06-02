@@ -10,7 +10,12 @@
 "move.ok" = "好";
 "menu.copy_status" = "复制状态";
 "menu.refresh" = "立即刷新";
+"menu.about" = "关于 Process Monitor";
 "menu.check_for_updates" = "检查更新...";
+"about.format" = "版本 %@（构建 %@）";
+"about.check_updates" = "检查更新";
+"about.open_intro" = "在 apps.tomippe.jp 打开应用介绍页";
+"button.ok" = "好";
 "menu.login_item" = "登录时打开";
 "menu.quit" = "退出";
 "menu.no_processes" = "没有进程数据";
