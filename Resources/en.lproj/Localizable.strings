@@ -11,6 +11,7 @@
 "menu.copy_status" = "Copy Status";
 "menu.refresh" = "Refresh Now";
 "menu.about" = "About Process Monitor...";
+"menu.send_feedback" = "Send Feedback...";
 "menu.check_for_updates" = "Check for Updates...";
 "about.format" = "Version %@ (build %@)";
 "about.check_updates" = "Check for Updates";

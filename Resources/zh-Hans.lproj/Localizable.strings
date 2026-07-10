@@ -11,6 +11,7 @@
 "menu.copy_status" = "复制状态";
 "menu.refresh" = "立即刷新";
 "menu.about" = "关于 Process Monitor";
+"menu.send_feedback" = "发送反馈...";
 "menu.check_for_updates" = "检查更新...";
 "about.format" = "版本 %@（构建 %@）";
 "about.check_updates" = "检查更新";
