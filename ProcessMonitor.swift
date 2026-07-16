@@ -36,6 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let averagingWindow: TimeInterval = 300
     private let menuNameWidth = 19
     private let cpuColumnTabStop: CGFloat = 185
+    private static let processMenuIconSide: CGFloat = 18
     private var samples: [CPUSample] = []
     private var latestRows: [ProcessRow] = []
     private var latestGroups: [ProcessGroup] = []
@@ -467,9 +468,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
 
-        let placeholder = NSImage(systemSymbolName: "cpu", accessibilityDescription: NSLocalizedString("a11y.cpu", comment: ""))
-        placeholder?.isTemplate = true
-        placeholder?.size = NSSize(width: 18, height: 18)
+        let placeholder: NSImage? = {
+            guard let image = NSImage(systemSymbolName: "cpu", accessibilityDescription: NSLocalizedString("a11y.cpu", comment: "")) else {
+                return nil
+            }
+            image.isTemplate = true
+            return Self.menuSizedIcon(image)
+        }()
 
         var pids: [pid_t] = []
         pids.reserveCapacity(rows.count)
@@ -493,8 +498,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             icons.reserveCapacity(pids.count)
             for pid in pids {
                 guard let icon = Self.applicationIcon(forPID: pid) else { continue }
-                icon.size = NSSize(width: 18, height: 18)
-                icons[pid] = icon
+                icons[pid] = Self.menuSizedIcon(icon)
             }
             guard !icons.isEmpty else { return }
             DispatchQueue.main.async {
@@ -514,7 +518,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let title = menuTitle(for: group)
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         if includeIcon, let image = icon(for: group) {
-            image.size = NSSize(width: 18, height: 18)
             item.image = image
         }
         item.attributedTitle = NSAttributedString(
@@ -525,6 +528,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ]
         )
         let submenu = NSMenu()
+
+        let stop = NSMenuItem(title: NSLocalizedString("menu.stop_process", comment: ""), action: #selector(stopProcessGroup(_:)), keyEquivalent: "")
+        stop.target = self
+        stop.representedObject = group
+        stop.isEnabled = !group.pids.isEmpty
+        submenu.addItem(stop)
+
+        submenu.addItem(.separator())
 
         if showPID, let pid = group.pids.first {
             let pidItem = NSMenuItem(
@@ -543,12 +554,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
         cpuTime.isEnabled = false
         submenu.addItem(cpuTime)
-
-        let stop = NSMenuItem(title: NSLocalizedString("menu.stop_process", comment: ""), action: #selector(stopProcessGroup(_:)), keyEquivalent: "")
-        stop.target = self
-        stop.representedObject = group
-        stop.isEnabled = !group.pids.isEmpty
-        submenu.addItem(stop)
 
         item.submenu = submenu
         return item
@@ -572,12 +577,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func icon(for group: ProcessGroup) -> NSImage? {
         for pid in group.pids {
             if let icon = Self.applicationIcon(forPID: pid) {
-                return icon
+                return Self.menuSizedIcon(icon)
             }
         }
-        let image = NSImage(systemSymbolName: "cpu", accessibilityDescription: NSLocalizedString("a11y.cpu", comment: ""))
-        image?.isTemplate = true
-        return image
+        guard let image = NSImage(systemSymbolName: "cpu", accessibilityDescription: NSLocalizedString("a11y.cpu", comment: "")) else {
+            return nil
+        }
+        image.isTemplate = true
+        return Self.menuSizedIcon(image)
+    }
+
+    /// メニュー用に固定正方形へ描き直し、アイコン幅の差でタイトル／CPU列がずれないようにする。
+    private static func menuSizedIcon(_ source: NSImage, side: CGFloat = processMenuIconSide) -> NSImage {
+        let size = NSSize(width: side, height: side)
+        let output = NSImage(size: size, flipped: false) { bounds in
+            let srcSize = source.size
+            guard srcSize.width > 0, srcSize.height > 0 else { return false }
+            let scale = min(bounds.width / srcSize.width, bounds.height / srcSize.height)
+            let drawSize = NSSize(width: srcSize.width * scale, height: srcSize.height * scale)
+            let drawRect = NSRect(
+                x: bounds.midX - drawSize.width * 0.5,
+                y: bounds.midY - drawSize.height * 0.5,
+                width: drawSize.width,
+                height: drawSize.height
+            )
+            NSGraphicsContext.current?.imageInterpolation = .high
+            source.draw(
+                in: drawRect,
+                from: .zero,
+                operation: .sourceOver,
+                fraction: 1,
+                respectFlipped: true,
+                hints: [.interpolation: NSImageInterpolation.high]
+            )
+            return true
+        }
+        output.isTemplate = source.isTemplate
+        return output
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {
