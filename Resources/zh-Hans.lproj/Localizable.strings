@@ -24,9 +24,10 @@
 "menu.cpu_time" = "CPU 时间：%@";
 "menu.open_activity_monitor" = "打开活动监视器";
 "menu.stop_process" = "停止";
+"menu.all_processes" = "所有进程";
 "alert.loginitem_failed_title" = "无法更新登录项";
 "alert.stop_title" = "停止 %@？";
-"alert.stop_message" = "将请求 %d 个进程退出。";
+"alert.stop_message" = "将请求 %d 个进程退出。若 8 秒内未退出，将强制结束。";
 "alert.stop_button" = "停止";
 "alert.cancel_button" = "取消";
 "status.loading" = "...";

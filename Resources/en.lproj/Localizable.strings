@@ -24,9 +24,10 @@
 "menu.cpu_time" = "CPU Time: %@";
 "menu.open_activity_monitor" = "Open Activity Monitor";
 "menu.stop_process" = "Stop";
+"menu.all_processes" = "All Processes";
 "alert.loginitem_failed_title" = "Couldn’t Update Login Item";
 "alert.stop_title" = "Stop %@?";
-"alert.stop_message" = "This will ask %d process(es) to quit.";
+"alert.stop_message" = "This will ask %d process(es) to quit. If they don’t exit within 8 seconds, they will be force quit.";
 "alert.stop_button" = "Stop";
 "alert.cancel_button" = "Cancel";
 "status.loading" = "...";

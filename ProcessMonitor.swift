@@ -39,7 +39,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var samples: [CPUSample] = []
     private var latestRows: [ProcessRow] = []
     private var latestGroups: [ProcessGroup] = []
+    private var allProcessesSubmenu: NSMenu?
     private var currentSummary = NSLocalizedString("status.loading", comment: "")
+    private let gracefulStopTimeout: TimeInterval = 8
 
     func applicationWillFinishLaunching(_: Notification) {
         MoveToApplicationsFolder.moveIfNecessary()
@@ -66,9 +68,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         timer?.tolerance = 1
     }
 
-    func menuWillOpen(_: NSMenu) {
-        rebuildMenu()
-        syncLaunchAtLoginItem()
+    func menuWillOpen(_ menu: NSMenu) {
+        if menu === statusItem.menu {
+            rebuildMenu()
+            syncLaunchAtLoginItem()
+        } else if menu === allProcessesSubmenu {
+            rebuildAllProcessesSubmenu(menu)
+        }
     }
 
     private func syncLaunchAtLoginItem() {
@@ -379,6 +385,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 menu.addItem(rankedMenuItem(for: group))
             }
         }
+        menu.addItem(allProcessesMenuItem())
 
         menu.addItem(.separator())
         menu.addItem(sectionMenuItem(NSLocalizedString("menu.copy_status", comment: ""), #selector(copyStatus), "c", symbolName: "doc.on.doc"))
@@ -423,6 +430,34 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             action: #selector(quit),
             keyEquivalent: "q"
         ))
+    }
+
+    private func allProcessesMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: NSLocalizedString("menu.all_processes", comment: ""), action: nil, keyEquivalent: "")
+        if let image = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: nil) {
+            image.isTemplate = true
+            image.size = NSSize(width: 18, height: 18)
+            item.image = image
+        }
+        let submenu = NSMenu()
+        submenu.delegate = self
+        allProcessesSubmenu = submenu
+        item.submenu = submenu
+        return item
+    }
+
+    private func rebuildAllProcessesSubmenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let groups = rankedProcessGroups(limit: Int.max)
+        if groups.isEmpty {
+            let item = NSMenuItem(title: NSLocalizedString("menu.no_processes", comment: ""), action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            return
+        }
+        for group in groups {
+            menu.addItem(rankedMenuItem(for: group))
+        }
     }
 
     private func rankedMenuItem(for group: ProcessGroup) -> NSMenuItem {
@@ -557,14 +592,41 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.addButton(withTitle: NSLocalizedString("alert.cancel_button", comment: ""))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-        for pid in group.pids {
+        requestGracefulStop(pids: group.pids)
+        refreshNow()
+    }
+
+    private func requestGracefulStop(pids: [pid_t]) {
+        for pid in pids {
             if let app = NSRunningApplication(processIdentifier: pid) {
                 _ = app.terminate()
             } else {
                 kill(pid, SIGTERM)
             }
         }
-        refreshNow()
+
+        let timeout = gracefulStopTimeout
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + timeout) { [weak self] in
+            var forcedAny = false
+            for pid in pids where Self.isProcessAlive(pid) {
+                forcedAny = true
+                if let app = NSRunningApplication(processIdentifier: pid) {
+                    _ = app.forceTerminate()
+                } else {
+                    kill(pid, SIGKILL)
+                }
+            }
+            guard forcedAny else { return }
+            DispatchQueue.main.async {
+                self?.refreshNow()
+            }
+        }
+    }
+
+    private static func isProcessAlive(_ pid: pid_t) -> Bool {
+        guard pid > 0 else { return false }
+        if kill(pid, 0) == 0 { return true }
+        return errno == EPERM
     }
 
     @objc private func refreshNow() {

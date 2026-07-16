@@ -24,9 +24,10 @@
 "menu.cpu_time" = "CPU時間: %@";
 "menu.open_activity_monitor" = "アクティビティモニタを起動";
 "menu.stop_process" = "停止";
+"menu.all_processes" = "すべてのプロセス";
 "alert.loginitem_failed_title" = "ログイン項目を更新できませんでした";
 "alert.stop_title" = "%@ を停止しますか？";
-"alert.stop_message" = "%d 個のプロセスに終了を要求します。";
+"alert.stop_message" = "%d 個のプロセスに終了を要求します。8秒以内に終了しない場合は強制終了します。";
 "alert.stop_button" = "停止";
 "alert.cancel_button" = "キャンセル";
 "status.loading" = "...";
