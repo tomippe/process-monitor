@@ -22,6 +22,7 @@
 "menu.quit_format" = "%@ を終了";
 "menu.no_processes" = "プロセス情報なし";
 "menu.cpu_time" = "CPU時間: %@";
+"menu.pid" = "PID: %d";
 "menu.open_activity_monitor" = "アクティビティモニタを起動";
 "menu.stop_process" = "停止";
 "menu.all_processes" = "すべてのプロセス";

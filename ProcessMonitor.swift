@@ -40,6 +40,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var latestRows: [ProcessRow] = []
     private var latestGroups: [ProcessGroup] = []
     private var allProcessesSubmenu: NSMenu?
+    private var allProcessesIconGeneration = 0
     private var currentSummary = NSLocalizedString("status.loading", comment: "")
     private let gracefulStopTimeout: TimeInterval = 8
 
@@ -448,22 +449,71 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func rebuildAllProcessesSubmenu(_ menu: NSMenu) {
         menu.removeAllItems()
-        let groups = rankedProcessGroups(limit: Int.max)
-        if groups.isEmpty {
+        allProcessesIconGeneration += 1
+        let generation = allProcessesIconGeneration
+
+        // 現時点の ps 全件を個別 PID・A-Z で出す。アイコンは後から非同期で埋める
+        let rows = Self.readCurrentProcesses().sorted { lhs, rhs in
+            let nameOrder = lhs.name.localizedStandardCompare(rhs.name)
+            if nameOrder != .orderedSame {
+                return nameOrder == .orderedAscending
+            }
+            return lhs.pid < rhs.pid
+        }
+        if rows.isEmpty {
             let item = NSMenuItem(title: NSLocalizedString("menu.no_processes", comment: ""), action: nil, keyEquivalent: "")
             item.isEnabled = false
             menu.addItem(item)
             return
         }
-        for group in groups {
-            menu.addItem(rankedMenuItem(for: group))
+
+        let placeholder = NSImage(systemSymbolName: "cpu", accessibilityDescription: NSLocalizedString("a11y.cpu", comment: ""))
+        placeholder?.isTemplate = true
+        placeholder?.size = NSSize(width: 18, height: 18)
+
+        var pids: [pid_t] = []
+        pids.reserveCapacity(rows.count)
+        for row in rows {
+            let group = ProcessGroup(
+                name: row.name,
+                averageCPU: row.currentCPU,
+                currentCPU: row.currentCPU,
+                cpuTimeSeconds: row.cpuTimeSeconds,
+                pids: [row.pid]
+            )
+            let item = rankedMenuItem(for: group, includeIcon: false, showPID: true)
+            item.tag = Int(row.pid)
+            item.image = placeholder
+            menu.addItem(item)
+            pids.append(row.pid)
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var icons: [pid_t: NSImage] = [:]
+            icons.reserveCapacity(pids.count)
+            for pid in pids {
+                guard let icon = Self.applicationIcon(forPID: pid) else { continue }
+                icon.size = NSSize(width: 18, height: 18)
+                icons[pid] = icon
+            }
+            guard !icons.isEmpty else { return }
+            DispatchQueue.main.async {
+                guard let self,
+                      generation == self.allProcessesIconGeneration,
+                      menu === self.allProcessesSubmenu else { return }
+                for item in menu.items {
+                    let pid = pid_t(item.tag)
+                    guard pid > 0, let icon = icons[pid] else { continue }
+                    item.image = icon
+                }
+            }
         }
     }
 
-    private func rankedMenuItem(for group: ProcessGroup) -> NSMenuItem {
+    private func rankedMenuItem(for group: ProcessGroup, includeIcon: Bool = true, showPID: Bool = false) -> NSMenuItem {
         let title = menuTitle(for: group)
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        if let image = icon(for: group) {
+        if includeIcon, let image = icon(for: group) {
             image.size = NSSize(width: 18, height: 18)
             item.image = image
         }
@@ -475,6 +525,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ]
         )
         let submenu = NSMenu()
+
+        if showPID, let pid = group.pids.first {
+            let pidItem = NSMenuItem(
+                title: String(format: NSLocalizedString("menu.pid", comment: ""), pid),
+                action: nil,
+                keyEquivalent: ""
+            )
+            pidItem.isEnabled = false
+            submenu.addItem(pidItem)
+        }
 
         let cpuTime = NSMenuItem(
             title: String(format: NSLocalizedString("menu.cpu_time", comment: ""), formatDuration(group.cpuTimeSeconds)),
