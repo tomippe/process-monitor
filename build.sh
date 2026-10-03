@@ -145,7 +145,7 @@ create_app_bundle() {
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026 tomippe. All rights reserved.</string>
+    <string>Copyright © 2026 Studio Tomippe. All rights reserved.</string>
     <key>SUFeedURL</key>
     <string>https://apps.tomippe.jp/process-monitor/appcast.xml</string>
     <key>SUPublicEDKey</key>
